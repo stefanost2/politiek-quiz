@@ -60,24 +60,33 @@ if ('serviceWorker' in navigator) {
     let totalQuestions = 5;
 
     function loadCSV(filePath) {
-        fetch(filePath)
-            .then(response => response.text())
-            .then(data => {
-                parseCSV(data);
-                loadNextQuestion();
-            })
-            .catch(error => {
-                console.error('Fout bij het laden van het CSV-bestand:', error);
-                document.getElementById('question-container').innerText = 'Fout bij het laden van vragen. Controleer of het CSV-bestand beschikbaar is.';
-            });
-    }
+    console.log("Proberen om het CSV-bestand te laden van:", filePath);
+    fetch(filePath)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Netwerk antwoord was niet ok. Status: ' + response.status);
+            }
+            return response.text();
+        })
+        .then(data => {
+            console.log("CSV succesvol geladen. Data:");
+            console.log(data);
+            parseCSV(data);
+            loadNextQuestion();
+        })
+        .catch(error => {
+            console.error('Fout bij het laden van het CSV-bestand:', error);
+            document.getElementById('question-container').innerText = 'Fout bij het laden van vragen. Controleer of het CSV-bestand beschikbaar is of als er netwerkproblemen zijn.';
+        });
+}
+
 
     function parseCSV(data) {
         const lines = data.split('\n');
         lines.forEach((line, index) => {
             // Sla de eerste rij over (header)
             if (index === 0) return;
-            const values = line.split(',');
+            const values = line.split(';');
             if (values.length > 1) {
                 questions.push(values);
             }
