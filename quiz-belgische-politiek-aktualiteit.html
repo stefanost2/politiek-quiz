@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+
+    <title>Belgische Politiek Quiz</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .quiz-container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+        .question {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .option {
+            margin-bottom: 5px;
+        }
+        button {
+            margin-top: 20px;
+        }
+        .feedback {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="quiz-container">
+    <h2>Belgische Politiek Quiz</h2>
+    <div id="question-container"></div>
+    <button id="next-button" style="display: none;" onclick="loadNextQuestion()">Volgende vraag</button>
+    <div id="score-container" style="display: none;"></div>
+</div>
+
+<script>
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js')
+        .then((registration) => {
+            console.log('Service Worker geregistreerd met scope:', registration.scope);
+        })
+        .catch((error) => {
+            console.error('Service Worker registratie gefaald:', error);
+        });
+}
+
+
+    let questions = [];
+    let answeredQuestions = [];
+    let score = 0;
+    let totalQuestions = 5;
+
+    function loadCSV(filePath) {
+        fetch(filePath)
+            .then(response => response.text())
+            .then(data => {
+                parseCSV(data);
+                loadNextQuestion();
+            })
+            .catch(error => {
+                console.error('Fout bij het laden van het CSV-bestand:', error);
+                document.getElementById('question-container').innerText = 'Fout bij het laden van vragen. Controleer of het CSV-bestand beschikbaar is.';
+            });
+    }
+
+    function parseCSV(data) {
+        const lines = data.split('\n');
+        lines.forEach((line, index) => {
+            // Sla de eerste rij over (header)
+            if (index === 0) return;
+            const values = line.split(',');
+            if (values.length > 1) {
+                questions.push(values);
+            }
+        });
+    }
+
+    function loadNextQuestion() {
+        if (answeredQuestions.length >= totalQuestions) {
+            showFinalScore();
+            return;
+        }
+
+        if (questions.length === 0) {
+            document.getElementById('question-container').innerText = 'Geen vragen beschikbaar.';
+            return;
+        }
+
+        let randomIndex;
+        do {
+            randomIndex = Math.floor(Math.random() * questions.length);
+        } while (answeredQuestions.includes(randomIndex));
+
+        answeredQuestions.push(randomIndex);
+        const questionData = questions[randomIndex];
+        renderQuestion(questionData);
+    }
+
+    function renderQuestion(questionData) {
+        const container = document.getElementById('question-container');
+        container.innerHTML = '';
+        document.getElementById('next-button').style.display = 'none';
+
+        if (!questionData || questionData.length === 0) {
+            container.innerText = 'Fout: geen geldige vraaggegevens beschikbaar.';
+            return;
+        }
+
+        const questionText = document.createElement('div');
+        questionText.classList.add('question');
+        questionText.textContent = questionData[1].trim(); // Neem de vraag uit de tweede kolom (de eerste kolom is de vraag ID)
+        container.appendChild(questionText);
+
+        const optionsMapping = ['A', 'B', 'C', 'D'];
+        for (let i = 2; i <= 5; i++) { // Neem de opties uit de kolommen 3-6
+            const optionText = questionData[i].trim();
+            if (optionText) {
+                const option = document.createElement('div');
+                option.classList.add('option');
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'answer';
+                radio.value = optionsMapping[i - 2]; // Verwijst naar A, B, C, D
+                radio.onclick = () => checkAnswer(radio.value, questionData[6].trim(), questionData[7].trim());
+
+                const label = document.createElement('label');
+                label.textContent = optionText;
+
+                option.appendChild(radio);
+                option.appendChild(label);
+                container.appendChild(option);
+            }
+        }
+    }
+
+    function checkAnswer(selectedAnswer, correctAnswer, feedbackText) {
+        console.log('Geselecteerd antwoord:', selectedAnswer);
+        console.log('Juiste antwoord:', correctAnswer);
+
+        const feedback = document.createElement('div');
+        feedback.classList.add('feedback');
+        if (selectedAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()) {
+            feedback.textContent = 'Juist! Goed gedaan. ' + feedbackText;
+            score++;
+        } else {
+            feedback.textContent = 'Fout. Het juiste antwoord is: ' + correctAnswer + '. ' + feedbackText;
+        }
+        const container = document.getElementById('question-container');
+        container.appendChild(feedback);
+
+        document.getElementById('next-button').style.display = 'block';
+    }
+
+    function showFinalScore() {
+        const container = document.getElementById('question-container');
+        container.innerHTML = '';
+        document.getElementById('next-button').style.display = 'none';
+
+        const scoreContainer = document.getElementById('score-container');
+        scoreContainer.style.display = 'block';
+        scoreContainer.textContent = `Je hebt ${score} van de ${totalQuestions} vragen correct beantwoord.`;
+    }
+
+    // Laad het CSV-bestand met de vragen
+    document.addEventListener('DOMContentLoaded', () => {
+        loadCSV('vragen.csv'); // Zorg ervoor dat 'vragen.csv' in dezelfde directory staat als dit HTML-bestand
+    });
+
+    
+
+</script>
+</body>
+</html>
