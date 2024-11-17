@@ -3,83 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="manifest" href="manifest.json">
-
     <title>Belgische Politiek Quiz</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        .quiz-container {
-            max-width: 600px;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-        }
-        .question {
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .option {
-            margin-bottom: 5px;
-        }
-        button {
-            margin-top: 20px;
-        }
-        .feedback {
-            margin-top: 15px;
-            font-weight: bold;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="quiz-container">
     <h2>Belgische Politiek Quiz</h2>
     <div id="question-container"></div>
-    <button id="next-button" style="display: none;" onclick="loadNextQuestion()">Volgende vraag</button>
+    <button id="next-button" class="next-button" style="display: none;" onclick="loadNextQuestion()">Volgende vraag</button>
     <div id="score-container" style="display: none;"></div>
 </div>
 
 <script>
-
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js')
-        .then((registration) => {
-            console.log('Service Worker geregistreerd met scope:', registration.scope);
-        })
-        .catch((error) => {
-            console.error('Service Worker registratie gefaald:', error);
-        });
-}
-
-
     let questions = [];
     let answeredQuestions = [];
     let score = 0;
-    let totalQuestions = 5;
+    let totalQuestions = 10;
 
     function loadCSV(filePath) {
-    console.log("Proberen om het CSV-bestand te laden van:", filePath);
-    fetch(filePath)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Netwerk antwoord was niet ok. Status: ' + response.status);
-            }
-            return response.text();
-        })
-        .then(data => {
-            console.log("CSV succesvol geladen. Data:");
-            console.log(data);
-            parseCSV(data);
-            loadNextQuestion();
-        })
-        .catch(error => {
-            console.error('Fout bij het laden van het CSV-bestand:', error);
-            document.getElementById('question-container').innerText = 'Fout bij het laden van vragen. Controleer of het CSV-bestand beschikbaar is of als er netwerkproblemen zijn.';
-        });
-}
-
+        fetch(filePath)
+            .then(response => response.text())
+            .then(data => {
+                parseCSV(data);
+                loadNextQuestion();
+            })
+            .catch(error => {
+                console.error('Fout bij het laden van het CSV-bestand:', error);
+                document.getElementById('question-container').innerText = 'Fout bij het laden van vragen. Controleer of het CSV-bestand beschikbaar is.';
+            });
+    }
 
     function parseCSV(data) {
         const lines = data.split('\n');
@@ -94,7 +46,7 @@ if ('serviceWorker' in navigator) {
     }
 
     function loadNextQuestion() {
-        if (answeredQuestions.length >= totalQuestions) {
+        if (answeredQuestions.length >= totalQuestions || answeredQuestions.length >= questions.length) {
             showFinalScore();
             return;
         }
@@ -139,7 +91,7 @@ if ('serviceWorker' in navigator) {
                 radio.type = 'radio';
                 radio.name = 'answer';
                 radio.value = optionsMapping[i - 2]; // Verwijst naar A, B, C, D
-                radio.onclick = () => checkAnswer(radio.value, questionData[6].trim(), questionData[7].trim());
+                radio.onclick = () => checkAnswer(radio.value, questionData[6] ? questionData[6].trim() : '', questionData[7] ? questionData[7].trim() : '');
 
                 const label = document.createElement('label');
                 label.textContent = optionText;
@@ -176,16 +128,13 @@ if ('serviceWorker' in navigator) {
 
         const scoreContainer = document.getElementById('score-container');
         scoreContainer.style.display = 'block';
-        scoreContainer.textContent = `Je hebt ${score} van de ${totalQuestions} vragen correct beantwoord.`;
+        scoreContainer.textContent = `Je hebt ${score} van de ${answeredQuestions.length} vragen correct beantwoord.`;
     }
 
     // Laad het CSV-bestand met de vragen
     document.addEventListener('DOMContentLoaded', () => {
         loadCSV('vragen.csv'); // Zorg ervoor dat 'vragen.csv' in dezelfde directory staat als dit HTML-bestand
     });
-
-    
-
 </script>
 </body>
 </html>
