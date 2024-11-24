@@ -56,6 +56,20 @@ h2 {
     background-color: #074f57;
 }
 
+.action-button {
+    background-color: #077187;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.action-button:hover {
+    background-color: #074f57;
+}
+
 button {
     margin-top: 20px;
 }
@@ -66,4 +80,20 @@ button {
     font-weight: bold;
     margin-top: 20px;
     color: #074f57;
+}
+
+.summary-container {
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+.summary-title {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+.summary-text {
+    margin-left: 10px;
 }
