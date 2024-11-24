@@ -7,7 +7,21 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="quiz-container">
+<div class="initial-screen-container">
+    <h2>Welkom bij de Belgische Politiek Quiz</h2>
+    <button id="show-summary-button" class="next-button" onclick="showSummary()">Toon de samenvatting</button><br><br>
+    <label for="number-of-questions">Aantal vragen:</label><br>
+    <input type="number" id="number-of-questions" min="1" max="10" value="10"><br><br>
+    <button id="start-quiz-button" class="next-button" onclick="startQuiz()">Test je kennis</button>
+</div>
+
+<div class="overview-container" style="display: none;">
+    <h2>Overzicht van de Aktualiteit</h2>
+    <div id="overview-container"></div>
+    <button id="back-button" class="next-button" onclick="goBackToInitialScreen()">Terug</button>
+</div>
+
+<div class="quiz-container" style="display: none;">
     <h2>Belgische Politiek Quiz</h2>
     <div id="question-container"></div>
     <button id="next-button" class="next-button" style="display: none;" onclick="loadNextQuestion()">Volgende vraag</button>
@@ -19,30 +33,109 @@
     let answeredQuestions = [];
     let score = 0;
     let totalQuestions = 10;
+    let summaries = [];
 
-    function loadCSV(filePath) {
+    function loadCSV(filePath, callback) {
         fetch(filePath)
             .then(response => response.text())
             .then(data => {
-                parseCSV(data);
-                loadNextQuestion();
+                callback(data);
             })
             .catch(error => {
                 console.error('Fout bij het laden van het CSV-bestand:', error);
-                document.getElementById('question-container').innerText = 'Fout bij het laden van vragen. Controleer of het CSV-bestand beschikbaar is.';
+                document.getElementById('overview-container').innerText = 'Fout bij het laden van data. Controleer of het CSV-bestand beschikbaar is.';
             });
     }
 
-    function parseCSV(data) {
+    function parseSummaryCSV(data) {
         const lines = data.split('\n');
+        const currentWeek = new Date().getWeekNumber() - 1;
+        console.log('Huidige weeknummer (vorige week):', currentWeek);
         lines.forEach((line, index) => {
             // Sla de eerste rij over (header)
             if (index === 0) return;
             const values = line.split(';');
-            if (values.length > 1) {
+            if (values.length > 2 && parseInt(values[0].trim()) === currentWeek) {
+                summaries.push(values);
+            }
+        });
+        renderOverview();
+    }
+
+    function renderOverview() {
+        const container = document.getElementById('overview-container');
+        container.innerHTML = '';
+
+        if (summaries.length === 0) {
+            container.innerText = 'Geen samenvattingen beschikbaar voor vorige week.';
+            return;
+        }
+
+        summaries.forEach(summary => {
+            const summaryContainer = document.createElement('div');
+            summaryContainer.classList.add('summary-container');
+
+            const title = document.createElement('div');
+            title.classList.add('summary-title');
+            title.textContent = summary[1].trim(); // Titel uit de tweede kolom
+            summaryContainer.appendChild(title);
+
+            const summaryText = document.createElement('div');
+            summaryText.classList.add('summary-text');
+            summaryText.textContent = summary[2].trim(); // Samenvatting uit de derde kolom
+            summaryContainer.appendChild(summaryText);
+
+            container.appendChild(summaryContainer);
+        });
+    }
+
+    function showSummary() {
+        document.querySelector('.initial-screen-container').style.display = 'none';
+        document.querySelector('.overview-container').style.display = 'block';
+        loadCSV('aktualiteit.csv', parseSummaryCSV);
+    }
+
+    function goBackToInitialScreen() {
+        document.querySelector('.overview-container').style.display = 'none';
+        document.querySelector('.initial-screen-container').style.display = 'block';
+    }
+
+    function startQuiz() {
+        resetQuiz();
+        const numberOfQuestionsInput = document.getElementById('number-of-questions');
+        totalQuestions = parseInt(numberOfQuestionsInput.value) || 10;
+        document.querySelector('.initial-screen-container').style.display = 'none';
+        document.querySelector('.quiz-container').style.display = 'block';
+        loadCSV('vragen.csv', parseQuestionCSV);
+    }
+
+    function parseQuestionCSV(data) {
+        const lines = data.split('\n');
+        const currentWeek = new Date().getWeekNumber() - 1;
+        console.log('Huidige weeknummer (vorige week):', currentWeek);
+        lines.forEach((line, index) => {
+            // Sla de eerste rij over (header)
+            if (index === 0) return;
+            const values = line.split(';');
+            if (values.length > 3 && parseInt(values[1].trim()) === currentWeek) {
                 questions.push(values);
             }
         });
+        loadNextQuestion();
+    }
+
+    Date.prototype.getWeekNumber = function() {
+        const firstDayOfYear = new Date(this.getFullYear(), 0, 1);
+        const pastDaysOfYear = (this - firstDayOfYear) / 86400000;
+        return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+    };
+
+    function resetQuiz() {
+        questions = [];
+        answeredQuestions = [];
+        score = 0;
+        document.getElementById('score-container').style.display = 'none';
+        document.getElementById('score-container').innerHTML = '';
     }
 
     function loadNextQuestion() {
@@ -78,11 +171,11 @@
 
         const questionText = document.createElement('div');
         questionText.classList.add('question');
-        questionText.textContent = questionData[1].trim(); // Neem de vraag uit de tweede kolom (de eerste kolom is de vraag ID)
+        questionText.textContent = questionData[3].trim(); // Neem de vraag uit de vierde kolom (Vraag)
         container.appendChild(questionText);
 
         const optionsMapping = ['A', 'B', 'C', 'D'];
-        for (let i = 2; i <= 5; i++) { // Neem de opties uit de kolommen 3-6
+        for (let i = 4; i <= 7; i++) { // Neem de opties uit de kolommen 5-8
             const optionText = questionData[i].trim();
             if (optionText) {
                 const option = document.createElement('div');
@@ -90,8 +183,8 @@
                 const radio = document.createElement('input');
                 radio.type = 'radio';
                 radio.name = 'answer';
-                radio.value = optionsMapping[i - 2]; // Verwijst naar A, B, C, D
-                radio.onclick = () => checkAnswer(radio.value, questionData[6] ? questionData[6].trim() : '', questionData[7] ? questionData[7].trim() : '');
+                radio.value = optionsMapping[i - 4]; // Verwijst naar A, B, C, D
+                radio.onclick = () => checkAnswer(radio.value, questionData[8] ? questionData[8].trim() : '', questionData[9] ? questionData[9].trim() : '');
 
                 const label = document.createElement('label');
                 label.textContent = optionText;
@@ -129,11 +222,22 @@
         const scoreContainer = document.getElementById('score-container');
         scoreContainer.style.display = 'block';
         scoreContainer.textContent = `Je hebt ${score} van de ${answeredQuestions.length} vragen correct beantwoord.`;
+        const backButton = document.createElement('button');
+        backButton.classList.add('next-button');
+        backButton.textContent = 'Terug naar startpagina';
+        backButton.style.marginTop = '15px';
+        backButton.onclick = () => {
+            document.querySelector('.quiz-container').style.display = 'none';
+            document.querySelector('.initial-screen-container').style.display = 'block';
+            resetQuiz();
+        };
+        scoreContainer.appendChild(backButton);
     }
 
-    // Laad het CSV-bestand met de vragen
+    // Laad het CSV-bestand met de samenvatting
     document.addEventListener('DOMContentLoaded', () => {
-        loadCSV('vragen.csv'); // Zorg ervoor dat 'vragen.csv' in dezelfde directory staat als dit HTML-bestand
+        // Start met het tonen van de initiële opties
+        document.querySelector('.initial-screen-container').style.display = 'block';
     });
 </script>
 </body>
